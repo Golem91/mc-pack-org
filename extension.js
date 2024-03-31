@@ -6,20 +6,24 @@ const { writeFile } = require('node:fs/promises');
  */
 function activate(context) {
 
-	const contentlist = ["Advancements","Predicates","Banner Pattern","Chat Type","Damage Type","Text Component","Trim Pattern","Trim Material","Wolf Variant","Item Modifiers","Recipes","Structures","Item Tags","Block Tags","Damage Types","Loot Tables","Functions","Worldgen"]
+	const contentlist = ["Advancements", "Banner Pattern", "Block Tags", "Chat Type", "Damage Type", "Functions", "Item Modifiers", "Item Tags", "Loot Tables", "Predicates", "Recipes", "Structures", "Text Component", "Trim Material", "Trim Pattern", "Wolf Variant", "Worldgen"]
 	let disposable = vscode.commands.registerCommand('mc-pack-org.packInit', function () {
 		async function init () {
             let data = []
             const wsfolder = await vscode.window.showWorkspaceFolderPick({
                 ignoreFocusOut: true,
+                placeHolder: "DataPack will be initialised here",
             })
             let path = wsfolder.uri.path.slice(1)
             console.log(path)
 			const options = await vscode.window.showQuickPick(contentlist, {
 				canPickMany: true,
 				ignoreFocusOut: true,
+                title: "Chose Contents"
 			})
-            const namespace = await vscode.window.showInputBox()
+            const namespace = await vscode.window.showInputBox({
+                title: "Provide Namespace ID",
+            })
             await mkdir(path + "/data/minecraft", {recursive: true})
             await mkdir(path + "/data/" + namespace, {recursive: true})
             data = ['{\n','   "pack": {\n','      "pack_format": 36,\n','      "description": "<you pack description here>"\n','   }\n','}']
