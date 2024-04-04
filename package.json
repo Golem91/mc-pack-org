@@ -1,6 +1,7 @@
 {
   "name": "mc-pack-org",
   "displayName": "mc-pack-org",
+  "publisher": "DerGolem91",
   "description": "",
   "version": "0.0.1",
   "engines": {
@@ -9,6 +10,10 @@
   "categories": [
     "Other"
   ],
+  "repository": {
+      "type": "git",
+      "url": "https://github.com/Golem91/mc-pack-org"
+  },
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
