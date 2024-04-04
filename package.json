@@ -14,7 +14,15 @@
   "contributes": {
     "commands": [{
       "command": "mc-pack-org.packInit",
-      "title": "Initialise DataPack"
+      "title": "DataPack: Initialize"
+    },
+    {
+      "command": "mc-pack-org.createZIP",
+      "title": "DataPack: Create Zip"
+    },
+    {
+      "command": "mc-pack-org.setup",
+      "title": "DataPack: Configure"
     }]
   },
   "scripts": {

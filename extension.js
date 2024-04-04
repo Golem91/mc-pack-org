@@ -1,36 +1,95 @@
 const vscode = require('vscode');
-const { mkdir } = require('node:fs/promises');
-const { writeFile } = require('node:fs/promises');
+const { writeFile , readFile , mkdir } = require('node:fs/promises');
+const AdmZip = require('adm-zip')
+
+async function getSaveLocation() {
+    // opens Save Dialog to select filename and directory to save zip in
+    const saveloc = await vscode.window.showSaveDialog({
+        title: "Select File to Save to",
+        saveLabel: "Save",
+        filters: {"Compressed Archive": ["zip"]}
+    })
+    return saveloc.path.slice(1)
+}
 /**
  * @param {vscode.ExtensionContext} context
  */
-function activate(context) {
-
+async function activate(context) {
+    let wsfolder = ""
+    let config = {}
+    // get workspace folder and read config
+    try {
+        wsfolder = vscode.workspace.workspaceFolders[0].uri.path.slice(1)
+        config = JSON.parse(await readFile(wsfolder + "/.vscode/pack-config.json", "utf8")) 
+    } catch { console.log("Config is missing, ignoring") }
+    // List of Folders and files to create during initialization
 	const contentlist = ["Advancements", "Banner Pattern", "Block Tags", "Chat Type", "Damage Type", "Functions", "Item Modifiers", "Item Tags", "Loot Tables", "Predicates", "Recipes", "Structures", "Text Component", "Trim Material", "Trim Pattern", "Wolf Variant", "Worldgen"]
+
+    let setup = vscode.commands.registerCommand('mc-pack-org.setup', async function () {
+    // create config file
+    // include is a JSON array which selects files you want to include within the zip root directory
+        let oldconfig = {}
+        // oldconfig is used to parse include entries to new config if initialized or changed
+        try { oldconfig = JSON.parse(await readFile(wsfolder + "/.vscode/pack-config.json", "utf8")) } catch { oldconfig = {include: []} }
+        try { 
+            // create config folder structure and initialize config file
+            await mkdir(wsfolder + "/.vscode")
+            const config = { saveLocation: await getSaveLocation(), include: oldconfig.include }
+            writeFile(wsfolder + "/.vscode/pack-config.json", JSON.stringify(config, null, 2)) 
+        } catch { console.log("Unable to create .vscode folder or write pack-config.json") }
+    }) 
+
+    let dispos = vscode.commands.registerCommand('mc-pack-org.createZIP', async function () {
+        // create zip file
+        let path = ""
+        // check for existence of a valid saveLocation in config; if present, load dir; if not, ask for location
+        if (config.saveLocation) {
+            path = config.saveLocation
+        } else {
+            path = await getSaveLocation()
+        }
+        // compose and write zip file
+        const zip = new AdmZip()
+        zip.addLocalFolder(wsfolder + "/data", "/data")
+        zip.addLocalFile(wsfolder + "/pack.mcmeta")
+        try { zip.addLocalFile(wsfolder + "/pack.png") } catch { console.log("Unable to find pack.png, ignoring") }
+        for (const x in config.include) {
+            // include entries from config
+            try { zip.addLocalFile(wsfolder + "/" + config.include[x]) } catch { console.log("Unable to add include. Typo check for typos") }
+        }
+        zip.writeZip(path)
+    })
 	let disposable = vscode.commands.registerCommand('mc-pack-org.packInit', function () {
-		async function init () {
+        // initializasion of datapack
+        async function init () {
             let data = []
-            const wsfolder = await vscode.window.showWorkspaceFolderPick({
+            // choose workspace folder
+            const wfolder = await vscode.window.showWorkspaceFolderPick({
                 ignoreFocusOut: true,
                 placeHolder: "DataPack will be initialised here",
             })
-            let path = wsfolder.uri.path.slice(1)
-            console.log(path)
+            let path = wfolder.uri.path.slice(1)
+            // choose dirs to include in datapack
 			const options = await vscode.window.showQuickPick(contentlist, {
 				canPickMany: true,
 				ignoreFocusOut: true,
                 title: "Chose Contents"
 			})
+            // choose namespace ID for main folder structure
             const namespace = await vscode.window.showInputBox({
                 title: "Provide Namespace ID",
             })
+            // create initial folder structure; /data/minecraft and /data/<namespace>
+            // as well as the pack.mcmeta
             await mkdir(path + "/data/minecraft", {recursive: true})
             await mkdir(path + "/data/" + namespace, {recursive: true})
             data = ['{\n','   "pack": {\n','      "pack_format": 36,\n','      "description": "<you pack description here>"\n','   }\n','}']
             await writeFile(path + "/pack.mcmeta", data)
             const nspath = path + "/data/" + namespace
+            console.log("Creating folder structure...")
+            // create advanced folder structure as provided by options quickpick
             options.forEach (async (x) => {
-                 switch (x) {
+                switch (x) {
                     case "Advancements":
                         console.log("Advancements")
                         await mkdir(nspath + "/advancements", {recursive: true})
@@ -160,11 +219,12 @@ function activate(context) {
                         console.log("None Selected")
                         break
                 }
+                console.log("Done!")
             })
 		}
         init()
 	})
-	context.subscriptions.push(disposable && disposable1);
+	context.subscriptions.push(disposable && dispos && setup);
 
 }
 
