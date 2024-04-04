@@ -2,6 +2,14 @@ const vscode = require('vscode');
 const { writeFile , readFile , mkdir } = require('node:fs/promises');
 const AdmZip = require('adm-zip')
 
+let wsfolder = ""
+let config = {}
+
+// read config function
+async function getConfig() {
+    config = JSON.parse(await readFile(wsfolder + "/.vscode/pack-config.json", "utf8")) 
+    return config
+}
 async function getSaveLocation() {
     // opens Save Dialog to select filename and directory to save zip in
     const saveloc = await vscode.window.showSaveDialog({
@@ -15,12 +23,10 @@ async function getSaveLocation() {
  * @param {vscode.ExtensionContext} context
  */
 async function activate(context) {
-    let wsfolder = ""
-    let config = {}
     // get workspace folder and read config
     try {
         wsfolder = vscode.workspace.workspaceFolders[0].uri.path.slice(1)
-        config = JSON.parse(await readFile(wsfolder + "/.vscode/pack-config.json", "utf8")) 
+        config = await getConfig()
     } catch { console.log("Config is missing, ignoring") }
     // List of Folders and files to create during initialization
 	const contentlist = ["Advancements", "Banner Pattern", "Block Tags", "Chat Type", "Damage Type", "Functions", "Item Modifiers", "Item Tags", "Loot Tables", "Predicates", "Recipes", "Structures", "Text Component", "Trim Material", "Trim Pattern", "Wolf Variant", "Worldgen"]
@@ -30,7 +36,7 @@ async function activate(context) {
     // include is a JSON array which selects files you want to include within the zip root directory
         let oldconfig = {}
         // oldconfig is used to parse include entries to new config if initialized or changed
-        try { oldconfig = JSON.parse(await readFile(wsfolder + "/.vscode/pack-config.json", "utf8")) } catch { oldconfig = {include: []} }
+        try { oldconfig = await getConfig() } catch { oldconfig = {include: []} }
         try { 
             // create config folder structure and initialize config file
             await mkdir(wsfolder + "/.vscode")
@@ -40,6 +46,8 @@ async function activate(context) {
     }) 
 
     let dispos = vscode.commands.registerCommand('mc-pack-org.createZIP', async function () {
+        // reload config
+        try { config = await getConfig() } catch { console.log("Unable to read config") }
         // create zip file
         let path = ""
         // check for existence of a valid saveLocation in config; if present, load dir; if not, ask for location
